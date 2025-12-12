@@ -1,0 +1,56 @@
+# 3 Etapas
+
+# Dependencies
+FROM node:21-alpine3.19 AS deps
+WORKDIR /usr/src/app
+
+COPY package.json ./
+# COPY package-lock.json ./
+
+RUN npm install 
+COPY . .
+
+RUN npm run build
+
+# Builder
+FROM node:21-alpine3.19 AS build
+
+WORKDIR /usr/src/app
+
+# copiar deps
+COPY --from=deps /usr/src/app/node_modules ./node_modules
+
+# Copiar todo el codigo fuente de la app
+COPY . .
+
+# RUN npm run test
+RUN npm run build
+
+# Dejamos las dependencias de produccion 
+# RUN npm ci -f --only=production && npm cache clean --force
+RUN npm install --only=production && npm cache clean --force
+
+RUN npx prisma generate
+
+
+# Imagen final
+
+FROM node:21-alpine3.19 AS prod
+
+WORKDIR /usr/src/app
+
+# Copiar deps del stage build
+COPY --from=build /usr/src/app/node_modules ./node_modules
+
+# Copiar la carpeta de dist
+COPY --from=build /usr/src/app/dist ./dist
+
+# Indicamos que estamos en produccion
+ENV NODE_ENV=production
+
+# Creamos un usuario node
+USER node
+
+EXPOSE 3000
+
+CMD [ "node", "dist/main.js" ]
