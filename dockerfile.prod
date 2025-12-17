@@ -8,7 +8,10 @@ COPY package.json ./
 # COPY package-lock.json ./
 COPY yarn.lock ./
 
-RUN yarn install --frozen-lockfile
+# Install build dependencies for bcrypt/gyp
+RUN apk add --no-cache python3 make g++
+
+RUN yarn install --network-timeout 100000
 COPY . .
 
 RUN yarn build
@@ -30,7 +33,7 @@ RUN yarn build
 # Dejamos las dependencias de produccion 
 # RUN npm ci -f --only=production && npm cache clean --force
 # RUN npm install --only=production && npm cache clean --force
-RUN yarn install --production --frozen-lockfile && yarn cache clean
+RUN yarn install --production --network-timeout 100000 && yarn cache clean
 
 RUN npx prisma generate
 
